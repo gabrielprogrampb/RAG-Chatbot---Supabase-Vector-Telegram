@@ -1,0 +1,1021 @@
+{
+  "name": "RAG Supabase + Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 1. Alimentar Base de Datos (Supabase)\nEste flujo busca archivos nuevos en Google Drive y los guarda en Supabase (PostgreSQL)",
+        "height": 656,
+        "width": 576,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        784,
+        192
+      ],
+      "id": "f209f4e6-ae43-420d-8211-6bd90163a4f6",
+      "name": "Nota Ingesta"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Chat vía Telegram (Gemini Flash)\nEl usuario pregunta por Telegram, el Agente (Gemini) consulta Supabase y responde.",
+        "height": 656,
+        "width": 912,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1488,
+        192
+      ],
+      "id": "6f24cff4-89f4-4617-887d-c7c5a96df0eb",
+      "name": "Nota Chat"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1296,
+        960
+      ],
+      "id": "3a247cf0-2d99-4da6-804a-8726f7dab05a",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "YK6cqSY2cPPxYH3d",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "textSplittingMode": "custom",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1088,
+        528
+      ],
+      "id": "f481afd6-a46c-4708-a943-7035dc3cc467",
+      "name": "Cargador de Datos"
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 250,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        864,
+        704
+      ],
+      "id": "eacfb166-b936-4c04-a43e-8b72eada2ab1",
+      "name": "Separador de Texto"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "=Eres un asistente virtual profesional. Tu tarea es responder consultas basándote en los documentos.\n\nREGLAS DE FORMATO (HTML):\n1. OBLIGATORIO: Usa la etiqueta <b> para resaltar títulos, nombres importantes y encabezados. (Ejemplo: <b>Formación Académica</b>).\n2. Usa la etiqueta <i> para textos que requieran énfasis suave.\n3. NO uses Markdown (no uses **, ## ni __).\n4. NO uses etiquetas HTML complejas como <ul>, <li>, <p> o <br>. Telegram no las soporta.\n5. Para hacer listas, usa emojis (🔹, ▪️, ✅) al principio de cada línea y saltos de línea normales.\n6. Deja siempre una línea vacía entre cada sección.\n\nEjemplo de respuesta ideal:\n<b>Perfil Profesional</b>\nEste es un resumen del perfil de <b>Usuario Ejemplo</b>.\n\n<b>Habilidades Técnicas</b>\n🔹 <b>Lenguajes:</b> HTML, CSS, JS.\n🔹 <b>Herramientas:</b> VS Code, Canva."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1856,
+        288
+      ],
+      "id": "ec9ebc15-fa1b-43f4-86b7-30ac5cfc43b7",
+      "name": "Agente IA (Telegram)"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "embeddingBatchSize": 250,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        864,
+        320
+      ],
+      "id": "f548199e-448b-433d-97b7-b6a2e75b8368",
+      "name": "Supabase (Insertar)",
+      "credentials": {
+        "postgres": {
+          "id": "o8y3T5LIQjB1cvvI",
+          "name": "Postgres n8n 3 cuenta"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Usa esta herramienta para buscar respuestas en la base de datos vectorial de Supabase."
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1.1,
+      "position": [
+        2096,
+        512
+      ],
+      "id": "eada32e6-a9c8-409a-9d27-45a3ed1f42a8",
+      "name": "Herramienta Búsqueda Vectorial"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        2000,
+        704
+      ],
+      "id": "4247eb36-ff9a-46da-bd7b-941e53c7d7f9",
+      "name": "Supabase (Consultar)",
+      "credentials": {
+        "postgres": {
+          "id": "o8y3T5LIQjB1cvvI",
+          "name": "Postgres n8n 3 cuenta"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Selección de documentos (Drive)\nSe mantiene esta lógica para asegurar que solo cargamos archivos nuevos o modificados.",
+        "height": 672,
+        "width": 2000,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        192
+      ],
+      "id": "7ebef5a0-e7a5-471c-80bc-671648956d2f",
+      "name": "Nota Drive"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.file_id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        640,
+        320
+      ],
+      "id": "fbfaa6fa-0f1c-49f7-b67c-db022e4eea35",
+      "name": "Descargar archivo",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "dgwbYeqvkiHXaFdJ",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        336
+      ],
+      "id": "4362e44a-712b-4525-bbfe-011cdfdf7196",
+      "name": "Ejecutar Ingesta Manual"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1200,
+        624
+      ],
+      "id": "031e4b9c-70c3-49b4-ba18-70f1ed969329",
+      "name": "Cron Ingesta"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "TU_GOOGLE_DRIVE_FOLDER_ID",
+            "mode": "list",
+            "cachedResultName": "documentos",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/TU_GOOGLE_DRIVE_FOLDER_ID"
+          },
+          "includeTrashed": false
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -880,
+        464
+      ],
+      "id": "bfd67dff-6aa4-424f-9c24-9ccd359d9989",
+      "name": "Listar archivos Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "dgwbYeqvkiHXaFdJ",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "application/vnd.google-apps.folder",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -656,
+        464
+      ],
+      "id": "87d6a80a-2d3a-4389-af69-f4283567f7ae",
+      "name": "¿Es un archivo?"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "={{ $json.id }}",
+            "mode": "id"
+          }
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -384,
+        672
+      ],
+      "id": "44da6bc5-99d4-428c-a169-03c243ba430c",
+      "name": "Buscar en subcarpetas",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "dgwbYeqvkiHXaFdJ",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select count(*) as ingested from public.ingested_files\nwhere file_id = '{{ $json.id }}' and md5_checksum ='{{ $json.md5Checksum }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -448,
+        288
+      ],
+      "id": "323db3b0-160e-460c-8040-dd25c8822a32",
+      "name": "Verificar en Supabase",
+      "credentials": {
+        "postgres": {
+          "id": "o8y3T5LIQjB1cvvI",
+          "name": "Postgres n8n 3 cuenta"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-2",
+              "leftValue": "={{ $json.ingested }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -272,
+        288
+      ],
+      "id": "c6e87d86-3964-47ea-9166-a39b8377b0da",
+      "name": "¿Ya fue cargado?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "916c1842-b231-4cf1-a9df-e61c31cb64ed",
+      "name": "No hacer nada"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-1",
+              "name": "id",
+              "value": "={{ $('¿Es un archivo?').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "a-2",
+              "name": "md5Checksum",
+              "value": "={{ $('¿Es un archivo?').item.json.md5Checksum }}",
+              "type": "string"
+            },
+            {
+              "id": "a-3",
+              "name": "mimeType",
+              "value": "={{ $('¿Es un archivo?').item.json.mimeType }}",
+              "type": "string"
+            },
+            {
+              "id": "a-4",
+              "name": "modifiedTime",
+              "value": "={{ $('¿Es un archivo?').item.json.modifiedTime }}",
+              "type": "string"
+            },
+            {
+              "id": "a-5",
+              "name": "name",
+              "value": "={{ $('¿Es un archivo?').item.json.name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -96,
+        304
+      ],
+      "id": "374f1a49-3a72-4e96-9cab-03fe7d08a1e6",
+      "name": "Extraer variables"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "delete from n8n_vectors where file_id= '{{ $json.id }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        64,
+        512
+      ],
+      "id": "f681f9d1-c94c-42a7-8b6d-79e23c8157b4",
+      "name": "Borrar vectores viejos",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "o8y3T5LIQjB1cvvI",
+          "name": "Postgres n8n 3 cuenta"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        240,
+        320
+      ],
+      "id": "29dbdb3c-3158-42b5-9b4b-2a3fdea67be4",
+      "name": "Esperar eliminación"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "ingested_files",
+          "mode": "list",
+          "cachedResultName": "ingested_files"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "file_id": "={{ $json.id }}",
+            "name": "={{ $json.name }}",
+            "mime_type": "={{ $json.mimeType }}",
+            "md5_checksum": "={{ $json.md5Checksum }}",
+            "modified_time": "={{ $json.modifiedTime }}"
+          },
+          "matchingColumns": [
+            "file_id"
+          ],
+          "schema": [
+            {
+              "id": "file_id",
+              "displayName": "file_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "mime_type",
+              "displayName": "mime_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "md5_checksum",
+              "displayName": "md5_checksum",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "modified_time",
+              "displayName": "modified_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "last_ingested",
+              "displayName": "last_ingested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        320
+      ],
+      "id": "be38d478-3426-4dce-8aae-f96e43d47e89",
+      "name": "Insertar Metadatos Supabase",
+      "credentials": {
+        "postgres": {
+          "id": "o8y3T5LIQjB1cvvI",
+          "name": "Postgres n8n 3 cuenta"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE n8n_vectors\nSET file_id = '{{ $('Extraer variables').item.json.id }}'\nWHERE metadata->'loc'->'lines' = '{{ $json.metadata.loc.lines.toJsonString() }}' and file_id is null",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        576,
+        592
+      ],
+      "id": "0694bed6-99d7-4bde-8a47-120dc7c8b9c6",
+      "name": "Vincular Vectores a Archivo",
+      "credentials": {
+        "postgres": {
+          "id": "o8y3T5LIQjB1cvvI",
+          "name": "Postgres n8n 3 cuenta"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        576,
+        912
+      ],
+      "id": "fad0b516-e6d6-4056-bf2d-5d0377427320",
+      "name": "Fin Ingesta"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1536,
+        288
+      ],
+      "id": "4335a8b3-044c-4332-9f22-fd96be1b5e4d",
+      "name": "Telegram Trigger",
+      "webhookId": "AUTO_GENERATED_WEBHOOK_ID",
+      "credentials": {
+        "telegramApi": {
+          "id": "3zPhPTPGG2OKQoU6",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2256,
+        288
+      ],
+      "id": "1e928088-b215-4ce3-86fd-66bfeac7f897",
+      "name": "Responder Telegram",
+      "webhookId": "bb0509b2-fbf5-47fa-8d14-95e510051d8c",
+      "credentials": {
+        "telegramApi": {
+          "id": "3zPhPTPGG2OKQoU6",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        688
+      ],
+      "id": "cdd86dfa-84cb-4696-8caa-e81b4d58094e",
+      "name": "Gemini 2.5 Flash (Agente)",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "zyTKILzA8nxmm3ip",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2320,
+        688
+      ],
+      "id": "4a349f9f-8dd1-4fa4-93b8-7dfc524fa957",
+      "name": "Gemini 2.5 Flash (Herramienta)",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "zyTKILzA8nxmm3ip",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        1872,
+        496
+      ],
+      "id": "fa9f8d1e-25cc-4b3e-8b89-7fff4d382948",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "o8y3T5LIQjB1cvvI",
+          "name": "Postgres n8n 3 cuenta"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase (Insertar)",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Supabase (Consultar)",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cargador de Datos": {
+      "ai_document": [
+        [
+          {
+            "node": "Supabase (Insertar)",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separador de Texto": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Cargador de Datos",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Responder Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Herramienta Búsqueda Vectorial": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente IA (Telegram)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase (Consultar)": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "Herramienta Búsqueda Vectorial",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar archivo": {
+      "main": [
+        [
+          {
+            "node": "Supabase (Insertar)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Ingesta Manual": {
+      "main": [
+        [
+          {
+            "node": "Listar archivos Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron Ingesta": {
+      "main": [
+        [
+          {
+            "node": "Listar archivos Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listar archivos Drive": {
+      "main": [
+        [
+          {
+            "node": "¿Es un archivo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es un archivo?": {
+      "main": [
+        [
+          {
+            "node": "Verificar en Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Buscar en subcarpetas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar en subcarpetas": {
+      "main": [
+        [
+          {
+            "node": "¿Es un archivo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar en Supabase": {
+      "main": [
+        [
+          {
+            "node": "¿Ya fue cargado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Ya fue cargado?": {
+      "main": [
+        [
+          {
+            "node": "No hacer nada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extraer variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer variables": {
+      "main": [
+        [
+          {
+            "node": "Borrar vectores viejos",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Esperar eliminación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Borrar vectores viejos": {
+      "main": [
+        [
+          {
+            "node": "Esperar eliminación",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Esperar eliminación": {
+      "main": [
+        [
+          {
+            "node": "Insertar Metadatos Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar Metadatos Supabase": {
+      "main": [
+        [
+          {
+            "node": "Descargar archivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase (Insertar)": {
+      "main": [
+        [
+          {
+            "node": "Vincular Vectores a Archivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vincular Vectores a Archivo": {
+      "main": [
+        [
+          {
+            "node": "Fin Ingesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Agente IA (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini 2.5 Flash (Agente)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente IA (Telegram)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini 2.5 Flash (Herramienta)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Herramienta Búsqueda Vectorial",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente IA (Telegram)",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7e461c5a-1b92-4348-b044-c4e3e47da6c6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4de45ec98ba70f22ee15c951474f816c6abb85be0131c4b0b37bafb0f33aa7a9"
+  },
+  "id": "XcP4o0auKx5facbx",
+  "tags": [
+    {
+      "updatedAt": "2025-12-03T13:33:03.720Z",
+      "createdAt": "2025-12-03T13:33:03.720Z",
+      "id": "MQMzRFYZKR0VkWli",
+      "name": "rag"
+    }
+  ]
+}
